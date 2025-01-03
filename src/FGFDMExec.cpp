@@ -933,13 +933,16 @@ bool FGFDMExec::LoadModel(const string& model, bool addModelToPath)
     // Process the ground_reactions element. This element is REQUIRED.
     element = document->FindElement("ground_reactions");
     if (element) {
-      result = Models[eGroundReactions]->Load(element);
-      if (!result) {
-        FGXMLLogging log(Log, element, LogLevel::ERROR);
-        log << endl
-            << "Aircraft ground_reactions element has problems in file "
-            << aircraftCfgFileName << endl;
-        return result;
+      while (element) {
+        result = Models[eGroundReactions]->Load(element);
+        if (!result) {
+          FGXMLLogging log(Log, element, LogLevel::ERROR);
+          log << endl
+              << "Aircraft ground_reactions element has problems in file "
+              << aircraftCfgFileName << endl;
+          return result;
+        }
+        element = document->FindNextElement("ground_reactions");
       }
     } else {
       FGLogging log(Log, LogLevel::ERROR);
