@@ -357,7 +357,7 @@ bool FGPropulsion::Load(Element* el)
   // Process tank definitions first to establish the number of fuel tanks
 
   Element* tank_element = el->FindElement("tank");
-  unsigned int numTanks = 0;
+  unsigned int numTanks = Tanks.size();
 
   while (tank_element) {
     Tanks.push_back(make_shared<FGTank>(FDMExec, tank_element, numTanks));
@@ -374,7 +374,7 @@ bool FGPropulsion::Load(Element* el)
 
   ReadingEngine = true;
   Element* engine_element = el->FindElement("engine");
-  unsigned int numEngines = 0;
+  unsigned int numEngines = Engines.size();
 
   while (engine_element) {
     if (!ModelLoader.Open(engine_element)) return false;
@@ -418,7 +418,12 @@ bool FGPropulsion::Load(Element* el)
     engine_element = el->FindNextElement("engine");
   }
 
-  if (numEngines) bind();
+  static bool properties_bound = false;
+
+  if (numEngines && !properties_bound) {
+    properties_bound = true;
+    bind();
+  }
 
   CalculateTankInertias();
 
@@ -452,9 +457,19 @@ SGPath FGPropulsion::FindFullPathName(const SGPath& path) const
   const array<string, 4> dir_names = {"Engines", "engines", "Engine", "engine"};
 #endif
 
-  for(const string& dir_name: dir_names) {
-    name = CheckPathName(FDMExec->GetFullAircraftPath()/dir_name, path);
+  if (!path.dir().empty()) {
+    name = CheckPathName(FDMExec->GetFullAircraftPath(),
+                         path);
+
     if (!name.isNull()) return name;
+
+  } else {
+    for(const string& dir_name: dir_names) {
+      name = CheckPathName(FDMExec->GetFullAircraftPath()/dir_name,
+                           path);
+
+      if (!name.isNull()) return name;
+    }
   }
 
   return CheckPathName(FDMExec->GetEnginePath(), path);

@@ -972,12 +972,18 @@ bool FGFDMExec::LoadModel(const string& model, bool addModelToPath)
     // Process the propulsion element. This element is OPTIONAL.
     element = document->FindElement("propulsion");
     if (element) {
-      result = Propulsion->Load(element);
-      if (!result) {
-        FGXMLLogging log(Log, element, LogLevel::ERROR);
-        log << endl << "Aircraft propulsion element has problems in file " << aircraftCfgFileName << endl;
-        return result;
+      while (element) {
+        result = Propulsion->Load(element);
+        if (!result) {
+          FGXMLLogging log(Log, element, LogLevel::ERROR);
+          log << endl
+              << "Aircraft propulsion element has problems in file "
+              << aircraftCfgFileName << endl;
+          return result;
+        }
+        element = document->FindNextElement("propulsion");
       }
+
       for (unsigned int i=0; i < Propulsion->GetNumEngines(); i++)
         FCS->AddThrottle();
     }
