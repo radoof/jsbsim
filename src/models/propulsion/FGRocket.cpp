@@ -52,7 +52,9 @@ CLASS IMPLEMENTATION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 FGRocket::FGRocket(FGFDMExec* exec, Element *el, int engine_number, struct Inputs& input)
-  : FGEngine(engine_number, input), isp_function(nullptr), FDMExec(exec)
+  : FGEngine(engine_number, input),
+    isp_function(nullptr), propflow_function(nullptr), mxr_function(nullptr),
+    FDMExec(exec)
 {
   Load(exec, el);
 
@@ -74,6 +76,8 @@ FGRocket::FGRocket(FGFDMExec* exec, Element *el, int engine_number, struct Input
   TotalIspVariation = 0.0;
   VacThrust = 0.0;
   Flameout = false;
+  OpMode = -1;
+  PropFlowConversion = 1.0;
 
   // Defaults
    MinThrottle = 0.0;
@@ -107,23 +111,53 @@ FGRocket::FGRocket(FGFDMExec* exec, Element *el, int engine_number, struct Input
   if (el->FindElement("minthrottle"))
     MinThrottle = el->FindElementValueAsNumber("minthrottle");
 
+  Element* propflow_el = el->FindElement("propflowmax");
+
   if (el->FindElement("slfuelflowmax")) {
     SLFuelFlowMax = el->FindElementValueAsNumberConvertTo("slfuelflowmax", "LBS/SEC");
+
     if (el->FindElement("sloxiflowmax")) {
-    SLOxiFlowMax = el->FindElementValueAsNumberConvertTo("sloxiflowmax", "LBS/SEC");
+      SLOxiFlowMax = el->FindElementValueAsNumberConvertTo("sloxiflowmax", "LBS/SEC");
     }
+
     PropFlowMax = SLOxiFlowMax + SLFuelFlowMax;
     MxR = SLOxiFlowMax/SLFuelFlowMax;
-  } else if (el->FindElement("propflowmax")) {
-    PropFlowMax = el->FindElementValueAsNumberConvertTo("propflowmax", "LBS/SEC");
-    // Mixture ratio may be specified here, but it can also be specified as a
-    // function or via property
-    if (el->FindElement("mixtureratio")) {
-      MxR = el->FindElementValueAsNumber("mixtureratio");
+
+  } else if (propflow_el) {
+    Element* propflow_func_el = propflow_el->FindElement("function");
+
+    if (propflow_func_el) {
+      propflow_function = new FGFunction(exec, propflow_func_el, strEngineNumber.str());
+      PropFlowConversion = el->FindElementConversionValue("propflowmax", "LBS/SEC");
+
+    } else {
+      PropFlowMax = el->FindElementValueAsNumberConvertTo("propflowmax", "LBS/SEC");
+    }
+
+    // Mixture ratio may be specified as a function, constant value, or via property
+    Element* mxr_el = el->FindElement("mixtureratio");
+
+    if (mxr_el) {
+      Element* mxr_func_el = mxr_el->FindElement("function");
+
+      if (mxr_func_el) {
+        mxr_function = new FGFunction(exec, mxr_func_el, strEngineNumber.str());
+
+      } else {
+        MxR = el->FindElementValueAsNumber("mixtureratio");
+      }
     }
   }
 
   if (isp_function) Isp = isp_function->GetValue(); // cause Isp function to be executed if present.
+
+  if (propflow_function) {
+    PropFlowMax = propflow_function->GetValue();
+    PropFlowMax *= PropFlowConversion;
+  }
+
+  if (mxr_function) MxR = mxr_function->GetValue();
+
   // If there is a thrust table element, this is a solid propellant engine.
   thrust_table_element = el->FindElement("thrust_table");
   if (thrust_table_element) {
@@ -155,12 +189,22 @@ FGRocket::~FGRocket(void)
 
 void FGRocket::Calculate(void)
 {
-  if (FDMExec->IntegrationSuspended()) return;
+
+  // if (this->OpMode == -1) return;
 
   RunPreFunctions();
+  
+  FuelExpended = CalcFuelNeed();
+  OxidizerExpended = CalcOxidizerNeed();
+  
+  if (in.TotalDeltaT == 0.0) {
+    PropellantFlowRate = 0.0;
+  } else {
+    PropellantFlowRate = (FuelExpended + OxidizerExpended) / in.TotalDeltaT;
+  }
 
-  PropellantFlowRate = (FuelExpended + OxidizerExpended)/in.TotalDeltaT;
   TotalPropellantExpended += FuelExpended + OxidizerExpended;
+
   // If Isp has been specified as a function, override the value of Isp to that,
   // otherwise assume a constant value is given.
   if (isp_function) Isp = isp_function->GetValue();
@@ -194,8 +238,6 @@ void FGRocket::Calculate(void)
       VacThrust = 0.0;
 
     } else { // Calculate thrust
-
-      // PctPower = Throttle / MaxThrottle; // Min and MaxThrottle range from 0.0 to 1.0, normally.
       
       PctPower = in.ThrottlePos[EngineNumber];
       Flameout = false;
@@ -222,14 +264,30 @@ void FGRocket::Calculate(void)
 double FGRocket::CalcFuelNeed(void)
 {
   if (ThrustTable != 0L) {          // Thrust table given - infers solid fuel
-    FuelFlowRate = VacThrust/Isp;   // This calculates wdot (weight flow rate in lbs/sec)
+    FuelFlowRate = VacThrust / Isp; // This calculates wdot (weight flow rate in lbs/sec)
     FuelFlowRate /= (1 + TotalIspVariation);
+
   } else {
-    SLFuelFlowMax = PropFlowMax / (1 + MxR);
+    if (propflow_function) {
+      PropFlowMax = propflow_function->GetValue();
+      PropFlowMax *= PropFlowConversion;
+    }
+
+    if (mxr_function) MxR = mxr_function->GetValue();
+
+    OpMode = std::round(in.OperationMode[EngineNumber]);
+
+    if (OpMode == eModeMonoProp || MxR > 10E+6) {
+      SLFuelFlowMax = 0.0;
+    } else {
+      SLFuelFlowMax = PropFlowMax / (1 + MxR);
+    }
+
     FuelFlowRate = SLFuelFlowMax * PctPower;
   }
 
   FuelExpended = FuelFlowRate * in.TotalDeltaT; // For this time step ...
+
   return FuelExpended;
 }
 
@@ -237,9 +295,22 @@ double FGRocket::CalcFuelNeed(void)
 
 double FGRocket::CalcOxidizerNeed(void)
 {
-  SLOxiFlowMax = PropFlowMax * MxR / (1 + MxR);
+  if (propflow_function) {
+    PropFlowMax = propflow_function->GetValue();
+    PropFlowMax *= PropFlowConversion;
+  }
+
+  if (mxr_function) MxR = mxr_function->GetValue();
+
+  if (MxR > 10E+6) {
+    SLOxiFlowMax = PropFlowMax;
+  } else {
+    SLOxiFlowMax = PropFlowMax * MxR / (1 + MxR);
+  }
+  
   OxidizerFlowRate = SLOxiFlowMax * PctPower;
   OxidizerExpended = OxidizerFlowRate * in.TotalDeltaT;
+
   return OxidizerExpended;
 }
 
@@ -309,6 +380,8 @@ void FGRocket::bindmodel(FGPropertyManager* PropertyManager)
     property_name = base_property_name + "/isp";
     PropertyManager->Tie( property_name.c_str(), this, &FGRocket::GetIsp,
                                                        &FGRocket::SetIsp);
+    property_name = base_property_name + "/operation-mode";
+    PropertyManager->Tie( property_name.c_str(), this, &FGRocket::GetOperationMode);
   }
 }
 

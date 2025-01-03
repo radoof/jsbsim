@@ -264,6 +264,13 @@ public:
       @return feather command for the given engine (on / off)*/
   bool GetFeatherCmd(int engine) const { return PropFeatherCmd[engine]; }
 
+  /** Gets the [rocket] engine operation mode command.
+      @param engine engine ID number
+      @return operation mode command for the given engine, returns -1 / 0 / 1 */
+  double GetOperationModeCmd(int engine) const;
+
+  const std::vector<double>& GetOperationModeCmd() const {return OperationModeCmd;}
+
   /** Gets the pitch trim command.
       @return pitch trim command in range from -1.0 to 1.0 */
   double GetPitchTrimCmd(void) const { return PTrimCmd; }
@@ -362,6 +369,13 @@ public:
   bool GetPropFeather(int engine) const { return PropFeather[engine]; }
 
   const std::vector<bool>& GetPropFeather() const { return PropFeather; }
+
+  /** Gets the [rocket] engine operation mode.
+      @param engine engine ID number
+      @return operation mode for the given engine, returns -1 / 0 / 1 */
+  double GetOperationMode(int engine) const;
+
+  const std::vector<double>& GetOperationMode() const {return OperationMode;}
   //@}
 
   /** Retrieves all component names for inclusion in output stream
@@ -445,6 +459,11 @@ public:
       @param cmd feather (bool)*/
   void SetFeatherCmd(int engine, bool cmd);
   //@}
+  
+  /** Sets the operation mode command for the specified [rocket] engine
+      @param engine engine ID number
+      @param mode command -1 for off, 0 for monoprop, 1 for biprop */
+  void SetOperationModeCmd(int engine, double mode);
 
   /// @name Aerosurface position setting
   //@{
@@ -487,7 +506,7 @@ public:
       @note The mixture position is typically within the range of 0 to 1.0, but
             some models can handle values above 1.0. In the default piston
             engine model, a mixture position of 1.0 corresponds to the full
-            power setting, and the full rich setting is reached at a value
+            power setting, and the fuel rich setting is reached at a value
             higher than 1.0.
       @note JSBSim does not check nor enforce the value to be within 0.0-1.0.
   */
@@ -515,6 +534,11 @@ public:
       @param cmd prop fether setting (bool)*/
   void SetPropFeather(int engine, bool cmd);
   //@}
+
+  /** Sets the actual operation mode for the specified [rocket] engine
+      @param engine engine ID number
+      @param mode -1 for off, 0 for monoprop, 1 for biprop */
+  void SetOperationMode(int engine, double mode);
 
     /// @name Landing Gear brakes
   //@{
@@ -573,6 +597,7 @@ private:
   double DePos[NForms], DaLPos[NForms], DaRPos[NForms], DrPos[NForms];
   double DfPos[NForms], DsbPos[NForms], DspPos[NForms];
   double PTrimCmd, YTrimCmd, RTrimCmd;
+  
   std::vector <double> ThrottleCmd;
   std::vector <double> ThrottlePos;
   std::vector <double> MixtureCmd;
@@ -581,6 +606,9 @@ private:
   std::vector <double> PropAdvance;
   std::vector <bool> PropFeatherCmd;
   std::vector <bool> PropFeather;
+  std::vector <double> OperationModeCmd;
+  std::vector <double> OperationMode;
+
   //double LeftBrake, RightBrake, CenterBrake; // Brake settings
   std::vector <double> BrakePos; // left, center, right - defined by FGLGear:: enum
   double GearCmd,GearPos;

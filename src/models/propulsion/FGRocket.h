@@ -168,7 +168,9 @@ public:
   double GetMixtureRatio(void) const {return MxR;}
 
   double GetIsp(void) const {return Isp;}
-
+  
+  double GetOperationMode(void) const {return OpMode;}
+  
   void SetMixtureRatio(double mix) {MxR = mix;}
 
   void SetIsp(double isp) {Isp = isp;}
@@ -227,8 +229,18 @@ private:
   double PropellantFlowRate;
   bool Flameout;
   double BuildupTime;
+
+  int OpMode;
+
+  enum {eModeOff = -1, eModeMonoProp, eModeBiProp};
+
+  double PropFlowConversion;
+
   FGTable* ThrustTable;
   FGFunction* isp_function;
+  FGFunction* propflow_function;
+  FGFunction* mxr_function;
+  
   FGFDMExec* FDMExec;
 
   void Debug(int from);
