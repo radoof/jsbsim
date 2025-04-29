@@ -44,6 +44,7 @@ INCLUDES
 #include "input_output/FGXMLFileRead.h"
 #include "input_output/FGModelLoader.h"
 #include "input_output/FGLog.h"
+#include "input_output/string_utilities.h"
 
 using namespace std;
 
@@ -157,9 +158,9 @@ bool FGInput::SetDirectivesFile(const SGPath& fname)
   FGXMLFileRead XMLFile;
   Element* document = XMLFile.LoadXMLDocument(fname);
   if (!document) {
-    FGLogging log(FDMExec->GetLogger(), LogLevel::FATAL);
-    log << "Could not read directive file: " << fname << endl;
-    throw BaseException(log.str());
+    LogException err(FDMExec->GetLogger());
+    err << "Could not read directive file: " << fname << endl;
+    throw err;
   }
   bool result = Load(document);
 

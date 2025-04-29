@@ -407,13 +407,13 @@ public:
       @param property the name of the property
       @result the value of the specified property */
   double GetPropertyValue(const std::string& property)
-  { return instance->GetNode()->GetDouble(property); }
+  { return instance->GetNode()->getDoubleValue(property.c_str()); }
 
   /** Sets a property value.
       @param property the property to be set
       @param value the value to set the property to */
   void SetPropertyValue(const std::string& property, double value)
-  { instance->GetNode()->SetDouble(property, value); }
+  { instance->GetNode()->setDoubleValue(property.c_str(), value); }
 
   /// Returns the model name.
   const std::string& GetModelName(void) const { return modelName; }
@@ -516,7 +516,7 @@ public:
     /// Name of the property.
     std::string base_string;
     /// The node for the property.
-    FGPropertyNode_ptr node;
+    SGPropertyNode_ptr node;
   };
 
   /** Builds a catalog of properties.
@@ -629,6 +629,8 @@ public:
 
   auto GetRandomGenerator(void) const { return RandomGenerator; }
 
+  int  SRand(void) const { return RandomSeed; }
+
 private:
   // Declare Log first so that it's destroyed last: the logger may be used by
   // some FGFDMExec members to log data during their destruction.
@@ -684,7 +686,7 @@ private:
   std::shared_ptr<FGScript>           Script;
   std::shared_ptr<FGTrim>             Trim;
 
-  FGPropertyNode_ptr Root;
+  SGPropertyNode_ptr Root;
   std::shared_ptr<FGPropertyManager> instance;
 
   bool HoldDown;
@@ -705,7 +707,6 @@ private:
   bool ReadChild(Element*);
   bool ReadPrologue(Element*);
   void SRand(int sr);
-  int  SRand(void) const {return RandomSeed;}
   void LoadInputs(unsigned int idx);
   void LoadPlanetConstants(void);
   bool LoadPlanet(Element* el);

@@ -44,6 +44,8 @@ INCLUDES
 #include "input_output/FGOutputFG.h"
 #include "input_output/FGXMLFileRead.h"
 #include "input_output/FGModelLoader.h"
+#include "input_output/FGLog.h"
+#include "input_output/string_utilities.h"
 
 using namespace std;
 
@@ -174,14 +176,16 @@ bool FGOutput::SetDirectivesFile(const SGPath& fname)
   FGXMLFileRead XMLFile;
   Element* document = XMLFile.LoadXMLDocument(fname);
   if (!document) {
-    stringstream s;
-    s << "Could not read directive file: " << fname;
-    throw BaseException(s.str());
+    LogException err(FDMExec->GetLogger());
+    err << "Could not read directive file: " << fname;
+    throw err;
   }
 
   bool result = Load(document);
-  if (!result)
-    cerr << endl << "Aircraft output element has problems in file " << fname << endl;
+  if (!result) {
+    FGLogging log(FDMExec->GetLogger(), LogLevel::ERROR);
+    log << "\nAircraft output element has problems in file " << fname << "\n";
+  }
 
   return result;
 }
@@ -190,12 +194,15 @@ bool FGOutput::SetDirectivesFile(const SGPath& fname)
 
 bool FGOutput::Load(int subSystems, std::string protocol, std::string type,
                     std::string port, std::string name, double outRate,
-                    std::vector<FGPropertyNode_ptr> & outputProperties)
+                    std::vector<SGPropertyNode_ptr> & outputProperties)
 {
   size_t idx = OutputTypes.size();
   FGOutputType* Output = 0;
 
-  if (debug_lvl > 0) cout << endl << "  Output data set: " << idx << endl;
+  if (debug_lvl > 0) {
+    FGLogging log(FDMExec->GetLogger(), LogLevel::DEBUG);
+    log << "\n  Output data set: " << idx << "\n";
+  }
 
   type = to_upper(type);
 
@@ -216,7 +223,8 @@ bool FGOutput::Load(int subSystems, std::string protocol, std::string type,
   } else if (type == "TERMINAL") {
     // Not done yet
   } else if (type != string("NONE")) {
-    cerr << "Unknown type of output specified in config file" << endl;
+    FGLogging log(FDMExec->GetLogger(), LogLevel::ERROR);
+    log << "Unknown type of output specified in config file\n";
   }
 
   if (!Output) return false;
@@ -248,7 +256,10 @@ bool FGOutput::Load(Element* document, const SGPath& dir)
   string type = document->GetAttributeValue("type");
   FGOutputType* Output = 0;
 
-  if (debug_lvl > 0) cout << endl << "  Output data set: " << idx << "  " << endl;
+  if (debug_lvl > 0) {
+    FGLogging log(FDMExec->GetLogger(), LogLevel::DEBUG);
+    log << "\n  Output data set: " << idx << "  \n";
+  }
 
   type = to_upper(type);
 
@@ -263,7 +274,8 @@ bool FGOutput::Load(Element* document, const SGPath& dir)
   } else if (type == "TERMINAL") {
     // Not done yet
   } else if (type != string("NONE")) {
-    cerr << "Unknown type of output specified in config file" << endl;
+    FGLogging log(FDMExec->GetLogger(), LogLevel::ERROR);
+    log << "Unknown type of output specified in config file\n";
   }
 
   if (!Output) return false;
@@ -323,8 +335,9 @@ void FGOutput::Debug(int from)
     }
   }
   if (debug_lvl & 2 ) { // Instantiation/Destruction notification
-    if (from == 0) cout << "Instantiated: FGOutput" << endl;
-    if (from == 1) cout << "Destroyed:    FGOutput" << endl;
+    FGLogging log(FDMExec->GetLogger(), LogLevel::DEBUG);
+    if (from == 0) log << "Instantiated: FGOutput\n";
+    if (from == 1) log << "Destroyed:    FGOutput\n";
   }
   if (debug_lvl & 4 ) { // Run() method entry print for FGModel-derived objects
   }

@@ -15,7 +15,9 @@ set(PYTHON_TESTS ResetOutputFiles
                  CheckOutputRate
                  TestAccelerometer
                  CheckDebugLvl
+                 TestTurbulenceRandomSeed
                  TestCosineGust
+                 TestTurbulenceGustStop
                  TestScriptOutput
                  CheckSimTimeReset
                  TestHoldDown
@@ -51,6 +53,7 @@ set(PYTHON_TESTS ResetOutputFiles
                  TestPlanet
                  TestLighterThanAir
                  TestUnusableFuel
+                 TestSensorRandomSeed
                  TestPQRdot)
 
 foreach(test ${PYTHON_TESTS})
