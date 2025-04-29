@@ -37,13 +37,11 @@ HISTORY
 INCLUDES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-#include <cstring>
-#include <cstdlib>
-#include <sstream>
-
 #include "FGUDPInputSocket.h"
 #include "FGFDMExec.h"
-#include "input_output/FGXMLElement.h"
+#include "FGXMLElement.h"
+#include "string_utilities.h"
+#include "FGLog.h"
 
 using namespace std;
 
@@ -74,10 +72,11 @@ bool FGUDPInputSocket::Load(Element* el)
 
   while (property_element) {
     string property_str = property_element->GetDataLine();
-    FGPropertyNode* node = PropertyManager->GetNode(property_str);
+    SGPropertyNode* node = PropertyManager->GetNode(property_str);
     if (!node) {
-      cerr << fgred << highint << endl << "  No property by the name "
-           << property_str << " can be found." << reset << endl;
+      FGXMLLogging log(FDMExec->GetLogger(), property_element, LogLevel::ERROR);
+      log << LogFormat::RED << LogFormat::BOLD << "\n  No property by the name "
+          << property_str << " can be found.\n" << LogFormat::RESET;
     } else {
       InputProperties.push_back(node);
     }
@@ -106,15 +105,14 @@ void FGUDPInputSocket::Read(bool Holding)
 
     vector<double> values;
 
-    for (string& token : tokens) {
-      if (is_number(trim(token))) {
-        try {
-          values.push_back(atof_locale_c(token));
-        } catch(BaseException& e) {
-          return;
-        }
-      }
-     }
+    try {
+      for (string& token : tokens)
+        values.push_back(atof_locale_c(token));
+    } catch(InvalidNumber& e) {
+      FGLogging log(FDMExec->GetLogger(), LogLevel::ERROR);
+      log << e.what() << "\n";
+      return;
+    }
 
     if (values[0] < oldTimeStamp) {
       return;
@@ -124,7 +122,8 @@ void FGUDPInputSocket::Read(bool Holding)
 
     // the zeroeth value is the time stamp
     if ((values.size() - 1) != InputProperties.size()) {
-      cerr << endl << "Mismatch between UDP input property and value counts." << endl;
+      FGLogging log(FDMExec->GetLogger(), LogLevel::ERROR);
+      log << "\nMismatch between UDP input property and value counts.\n";
       return;
     }
 

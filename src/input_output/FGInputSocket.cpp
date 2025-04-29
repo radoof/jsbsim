@@ -38,15 +38,12 @@ HISTORY
 INCLUDES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-#include <cstring>
-#include <cstdlib>
-#include <sstream>
-#include <iomanip>
-
 #include "FGInputSocket.h"
 #include "FGFDMExec.h"
 #include "models/FGAircraft.h"
-#include "input_output/FGXMLElement.h"
+#include "FGXMLElement.h"
+#include "string_utilities.h"
+#include "FGLog.h"
 
 using namespace std;
 
@@ -79,7 +76,8 @@ bool FGInputSocket::Load(Element* el)
   SockPort = atoi(el->GetAttributeValue("port").c_str());
 
   if (SockPort == 0) {
-    cerr << endl << "No port assigned in input element" << endl;
+    FGXMLLogging log(FDMExec->GetLogger(), el, LogLevel::ERROR);
+    log << "No port assigned in input element\n";
     return false;
   }
 
@@ -148,7 +146,7 @@ void FGInputSocket::Read(bool Holding)
       }
 
       if (command == "set") {                       // SET PROPERTY
-        FGPropertyNode* node = nullptr;
+        SGPropertyNode* node = nullptr;
 
         if (argument.empty()) {
           socket->Reply("No property argument supplied.\r\n");
@@ -168,24 +166,20 @@ void FGInputSocket::Read(bool Holding)
           socket->Reply("Not a leaf property\r\n");
           break;
         } else {
-          if (is_number(trim(str_value))) {
-            try {
-              double value = atof_locale_c(str_value);
-              node->setDoubleValue(value);
-            } catch(BaseException& e) {
-              socket->Reply(e.what());
-              break;
-            }
-          }
-          else {
-            socket->Reply("Invalid number\r\n");
+          try {
+            double value = atof_locale_c(str_value);
+            node->setDoubleValue(value);
+          } catch(InvalidNumber& e) {
+            string msg(e.what());
+            msg += "\r\n";
+            socket->Reply(msg);
             break;
           }
         }
         socket->Reply("set successful\r\n");
 
       } else if (command == "get") {             // GET PROPERTY
-        FGPropertyNode* node = nullptr;
+        SGPropertyNode* node = nullptr;
 
         if (argument.empty()) {
           socket->Reply("No property argument supplied.\r\n");
@@ -259,7 +253,7 @@ void FGInputSocket::Read(bool Holding)
       } else if (command == "help") {               // HELP
 
         socket->Reply(
-        " JSBSim Server commands:\n\r\n"
+        " JSBSim Server commands:\r\n\r\n"
         "   get {property name}\r\n"
         "   set {property name} {value}\r\n"
         "   hold\r\n"
@@ -267,7 +261,7 @@ void FGInputSocket::Read(bool Holding)
         "   iterate {value}\r\n"
         "   help\r\n"
         "   quit\r\n"
-        "   info\n\r\n");
+        "   info\r\n\r\n");
 
       } else {
         socket->Reply(string("Unknown command: ") + command + "\r\n");

@@ -116,6 +116,9 @@ public:
   virtual ~FGLogging() { Flush(); }
   FGLogging& operator<<(const char* message) { buffer << message ; return *this; }
   FGLogging& operator<<(const std::string& message) { buffer << message ; return *this; }
+  // Operator for ints and anonymous enums
+  FGLogging& operator<<(int value) { buffer << value; return *this; }
+  // Operator for other numerical types
   template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
     FGLogging& operator<<(T value) { buffer << value; return *this; }
   FGLogging& operator<<(std::ostream& (*manipulator)(std::ostream&)) { buffer << manipulator; return *this; }
@@ -129,7 +132,6 @@ public:
   FGLogging& operator<<(const SGPath& path) { buffer << path; return *this; }
   FGLogging& operator<<(const FGColumnVector3& vec) { buffer << vec; return *this; }
   FGLogging& operator<<(LogFormat format);
-  std::string str(void) const { return buffer.str(); }
   void Flush(void);
 protected:
   std::shared_ptr<FGLogger> logger;
@@ -159,6 +161,27 @@ public:
 private:
   std::ostringstream buffer;
   LogLevel min_level = LogLevel::BULK;
+};
+
+class JSBSIM_API LogException : public BaseException, public FGLogging
+{
+public:
+  LogException(std::shared_ptr<FGLogger> logger);
+  LogException(LogException& other);
+  const char* what() const noexcept override;
+};
+
+class JSBSIM_API XMLLogException : public LogException
+{
+public:
+  XMLLogException(std::shared_ptr<FGLogger> logger, Element* el);
+  /// This constructor can promote a LogException to an XMLLogException
+  /// by adding the file location information to the exception.
+  /// This is useful to add some context to an exception that was thrown in a
+  /// context where the file location of the error was not known.
+  /// @param exception The LogException to promote.
+  /// @param el The Element containing the file location of the error.
+  XMLLogException(LogException& exception, Element* el);
 };
 } // namespace JSBSim
 #endif

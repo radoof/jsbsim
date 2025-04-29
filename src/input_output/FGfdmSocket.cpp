@@ -55,7 +55,9 @@ INCLUDES
 #include <sstream>
 #include <cstring>
 #include <assert.h>
+
 #include "FGfdmSocket.h"
+#include "input_output/string_utilities.h"
 
 using std::cout;
 using std::cerr;
@@ -269,7 +271,7 @@ string FGfdmSocket::Receive(void)
         int flags = fcntl(sckt_in, F_GETFL, 0);
         fcntl(sckt_in, F_SETFL, flags | O_NONBLOCK);
 #endif
-        if (send(sckt_in, "Connected to JSBSim server\n\rJSBSim> ", 36, 0) == SOCKET_ERROR)
+        if (send(sckt_in, "Connected to JSBSim server\r\nJSBSim> ", 36, 0) == SOCKET_ERROR)
           LogSocketError("Receive - TCP connection acknowledgement");
       }
     }

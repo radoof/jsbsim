@@ -222,7 +222,7 @@ public:
 
   /** Gets the steering command.
        @return steering command in range from -1.0 - 1.0 */
-   double GetDsCmd(void) const { return fdmex->GetGroundReactions()->GetDsCmd(); }
+   double GetDsCmd(void) const { return FDMExec->GetGroundReactions()->GetDsCmd(); }
 
   /** Gets the flaps command.
       @return flaps command in range from 0 to 1.0 */
@@ -405,7 +405,7 @@ public:
 
   /** Sets the steering command
        @param cmd steering command in percent*/
-   void SetDsCmd(double cmd) { fdmex->GetGroundReactions()->SetDsCmd( cmd ); }
+   void SetDsCmd(double cmd) { FDMExec->GetGroundReactions()->SetDsCmd( cmd ); }
 
   /** Sets the flaps command
       @param cmd flaps command in percent*/
@@ -615,7 +615,6 @@ private:
   double TailhookPos, WingFoldPos;
   SystemType systype;
   int ChannelRate;
-  FGFDMExec* fdmex;
 
   typedef std::vector <FGFCSChannel*> Channels;
   Channels SystemChannels;
